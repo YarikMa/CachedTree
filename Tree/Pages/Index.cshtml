@@ -1,0 +1,272 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Cached Tree";
+}
+
+@section Head
+{
+    <link rel="stylesheet" href="~/lib/jstree/themes/default/style.min.css" />
+}
+
+<div class="row">
+    <div class="col">
+        <button id="btn_add" class="btn btn-primary" onclick="add_node();" disabled>Add</button>
+        <button id="btn_remove" class="btn btn-primary" onclick="delete_node();" disabled>Remove</button>
+        <button id="btn_edit" class="btn btn-primary" onclick="rename_node();" disabled>Edit</button>
+        <div class="float-right">
+            <button id="btn_apply" class="btn btn-success" onclick="apply_changes();">Apply</button>
+            <button class="btn btn-danger" onclick="reset_trees();">Reset</button>
+        </div>
+    </div>
+    <div class="col">
+        <button id="btn_load" class="btn btn-primary" onclick="load_node();" disabled>Load</button>
+    </div>
+</div>
+<div class="row">
+    <div id="cachedTree" class="col mt-2 w-50 overflow-auto">
+    </div>
+    <div id="dbTree" class="col mt-2 w-50 overflow-auto">
+    </div>
+</div>
+
+@section Scripts
+{
+    <script src="~/lib/jstree/jstree.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            $('#cachedTree').jstree({
+                'core': {
+                    'themes': {
+                        'variant': 'large',
+                        'dots': false,
+                        'icons': false,
+                        'stripes': true
+                    },
+                    'multiple': false,
+                    'check_callback': function (operation, node) {
+                        return canExecuteAction($('#cachedTree'), node);
+                    },
+                    'keyboard': { 'f2': false }
+                },
+                'types': {
+                    'deleted': {
+                        'a_attr': { 'style': 'text-decoration:line-through' }
+                    }
+                },
+                'plugins': ['wholerow', 'types']
+            });
+
+            $('#cachedTree').on(
+                "changed.jstree",
+                function (evt, data) {
+                    var disabled = !(data.selected.length && canExecuteAction($('#cachedTree'), data.node));
+                    $('#btn_add').prop('disabled', disabled);
+                    $('#btn_remove').prop('disabled', disabled);
+                    $('#btn_edit').prop('disabled', disabled);
+
+                    var applyDisabled = !$('#cachedTree').jstree(true).get_node('#').children.length;
+                    $('#btn_apply').prop('disabled', applyDisabled);
+                });
+
+            $('#dbTree').jstree({
+                'core': {
+                    'themes': {
+                        'variant': 'large',
+                        'dots': false,
+                        'icons': false,
+                        'stripes': true
+                    },
+                    'multiple': false
+                },
+                'types':
+                {
+                    'deleted':
+                    {
+                        'a_attr':
+                        {
+                            'style':
+                                'text-decoration:line-through'
+                        }
+                    }
+                },
+                'plugins':
+                    ['wholerow', 'types']
+            });
+
+            $('#dbTree').on(
+                "changed.jstree",
+                function (evt, data) {
+                    var disabled = !data.selected.length;
+                    $('#btn_load').prop('disabled', disabled);
+                });
+
+            load_tree_data('/api/dbtree/', $('#dbTree'));
+            load_tree_data('/api/cachedtree/', $('#cachedTree'));
+        });
+
+        function load_tree_data(url, tree) {
+            $.ajax({
+                contentType: 'application/json',
+                type: 'GET',
+                url: url,
+                success: function (data) {
+                    tree.jstree(true).settings.core.data = $.map(data, node => toJsTreeNode(node));
+                    tree.jstree(true).refresh(true);
+                }
+            });
+        }
+
+        function add_node() {
+            var ref = $('#cachedTree').jstree(true),
+                sel = ref.get_selected();
+            if (!sel.length) {
+                return;
+            }
+            sel = sel[0];
+            sel = ref.create_node(sel);
+            if (sel) {
+                ref.edit(sel,
+                    null,
+                    function (node, status) {
+                        $.ajax({
+                            contentType: 'application/json',
+                            type: 'POST',
+                            url: '/api/cachedtree/',
+                            data: JSON.stringify({
+                                parentId: node.parent === '#' ? null : node.parent,
+                                value: node.text,
+                                isDeleted: node.type === 'deleted' ? true : false
+                            }),
+                            success:
+                                function (data, textStatus, jqXHR) {
+                                    ref.set_id(node, data.id);
+                                },
+                            error: function (jqXHR, textStatus, errorThrown) {
+                                ref.delete_node(sel);
+                                // TODO: show error
+                            }
+                        });
+                    });
+            }
+        };
+
+        function rename_node() {
+            var ref = $('#cachedTree').jstree(true),
+                sel = ref.get_selected();
+            if (!sel.length) {
+                return;
+            }
+            sel = sel[0];
+            ref.edit(sel,
+                null,
+                function (node, status) {
+                    $.ajax({
+                        contentType: 'application/json',
+                        type: 'PUT',
+                        url: `/api/cachedtree/${node.id}`,
+                        data: JSON.stringify(fromJsTreeNode(node)),
+                        error: function (jqXHR, textStatus, errorThrown) {
+                            // TODO: show error
+                            ref.rename_node(node, node.original.text);
+                        }
+                    });
+                });
+        };
+
+        function delete_node() {
+            var ref = $('#cachedTree').jstree(true),
+                sel = ref.get_selected(true);
+            if (!sel.length) {
+                return;
+            }
+            var node = sel[0];
+
+            $.ajax({
+                contentType: 'application/json',
+                type: 'DELETE',
+                url: `/api/cachedtree/${node.id}`,
+                success: function (data, textStatus, jqXHR) {
+                    load_tree_data('/api/cachedtree/', $('#cachedTree'));
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    // TODO: show error
+                }
+            });
+        };
+
+        function load_node() {
+            var ref = $('#dbTree').jstree(true),
+                sel = ref.get_selected();
+
+            if (!sel.length) {
+                return;
+            }
+            sel = sel[0];
+
+            $.ajax({
+                contentType: 'application/json',
+                type: 'GET',
+                url: `api/cachedtree/${sel}`,
+                success: function (data, textStatus, jqXHR) {
+                    load_tree_data('/api/cachedtree/', $('#cachedTree'));
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    // TODO: show error
+                }
+            });
+        };
+
+        function reset_trees() {
+            $.ajax({
+                contentType: 'application/json',
+                type: 'POST',
+                url: 'api/cachedtree/reset',
+                success: function (data, textStatus, jqXHR) {
+                    load_tree_data('/api/dbtree/', $('#dbTree'));
+                    load_tree_data('/api/cachedtree/', $('#cachedTree'));
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    // TODO: show error
+                }
+            });
+        };
+
+        function apply_changes() {
+            $.ajax({
+                contentType: 'application/json',
+                type: 'POST',
+                url: 'api/cachedtree/apply',
+                success: function (data, textStatus, jqXHR) {
+                    load_tree_data('/api/dbtree/', $('#dbTree'));
+                    load_tree_data('/api/cachedtree/', $('#cachedTree'));
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    // TODO: show error
+                }
+            });
+        };
+
+        function toJsTreeNode(node) {
+            return {
+                id: node.id.toString(),
+                parent: node.parentId == null ? '#' : node.parentId,
+                text: node.value,
+                type: node.isDeleted ? 'deleted' : 'default'
+            };
+        }
+
+        function fromJsTreeNode(jsTreeNode) {
+            return {
+                id: jsTreeNode.id,
+                parentId: jsTreeNode.parent === '#' ? null : jsTreeNode.parent,
+                value: jsTreeNode.text,
+                isDeleted: jsTreeNode.type === 'deleted' ? true : false
+            };
+        }
+
+        function canExecuteAction(tree, node) {
+            return tree.jstree(true).get_type(node) !== 'deleted';
+        }
+    </script>
+}
