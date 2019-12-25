@@ -48,7 +48,7 @@
         }
 
         [Test]
-        public void GetById_NodeNotExists_ThrowsKeyNotFoundException()
+        public void GetById_NodeNotExists_ReturnsNull()
         {
             // Arrange
             var treeContext = new DbTreeContext();
@@ -56,8 +56,10 @@
             var dbTreeRepository = new DbTreeRepository(treeContext);
 
             // Act
+            TreeNode node = dbTreeRepository.GetById(id);
+
             // Assert
-            Assert.That(() => dbTreeRepository.GetById(id), Throws.TypeOf<KeyNotFoundException>());
+            Assert.That(node, Is.Null);
         }
 
         [Test]

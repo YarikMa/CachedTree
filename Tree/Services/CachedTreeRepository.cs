@@ -42,14 +42,22 @@
             RestoreLinks(node);
         }
 
-        public override TreeNode GetById(Guid id)
+        public TreeNode Load(Guid id)
         {
-            if (_treeContext.Tree.TryGetValue(id, out TreeNode cachedNode))
+            TreeNode treeNode = GetById(id);
+            if (treeNode != null)
             {
-                return cachedNode;
+                return treeNode;
+            }
+                
+            treeNode = _treeRepository.GetById(id);
+            
+            if (treeNode == null || treeNode.IsDeleted)
+            {
+                return null;
             }
 
-            TreeNode node = TreeNode.Clone(_treeRepository.GetById(id));
+            TreeNode node = TreeNode.Clone(treeNode);
             Add(node);
 
             return node;

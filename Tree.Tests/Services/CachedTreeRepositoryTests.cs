@@ -140,7 +140,7 @@
         }
 
         [Test]
-        public void GetById_CacheContainsNode_ReturnsNodeWithoutRepositoryCall()
+        public void Load_CacheContainsNode_ReturnsNodeWithoutRepositoryCall()
         {
             // Arrange
             var expectedNode = new TreeNode
@@ -153,7 +153,7 @@
             var cachedTreeRepository = new CachedTreeRepository(treeContext, dbTreeRepository);
 
             // Act
-            TreeNode node = cachedTreeRepository.GetById(expectedNode.Id);
+            TreeNode node = cachedTreeRepository.Load(expectedNode.Id);
 
             // Assert
             Assert.That(node, Is.EqualTo(expectedNode));
@@ -161,7 +161,7 @@
         }
 
         [Test]
-        public void GetById_CacheDoesNotContainNode_ReturnsNodeWithRepositoryCall()
+        public void Load_CacheDoesNotContainNode_ReturnsNodeWithRepositoryCall()
         {
             // Arrange
             var expectedNode = new TreeNode
@@ -174,7 +174,7 @@
             var cachedTreeRepository = new CachedTreeRepository(treeContext, dbTreeRepository);
 
             // Act
-            TreeNode node = cachedTreeRepository.GetById(expectedNode.Id);
+            TreeNode node = cachedTreeRepository.Load(expectedNode.Id);
 
             // Assert
             Assert.That(node.Id, Is.EqualTo(expectedNode.Id));
@@ -182,7 +182,7 @@
         }
 
         [Test]
-        public void GetById_CacheDoesNotContainNode_NodeAddsToContext()
+        public void Load_CacheDoesNotContainNode_NodeAddsToContext()
         {
             // Arrange
             var expectedNode = new TreeNode
@@ -195,10 +195,46 @@
             var cachedTreeRepository = new CachedTreeRepository(treeContext, dbTreeRepository);
 
             // Act
-            cachedTreeRepository.GetById(expectedNode.Id);
+            cachedTreeRepository.Load(expectedNode.Id);
 
             // Assert
             Assert.That(treeContext.Tree, Contains.Key(expectedNode.Id));
+        }
+
+        [Test]
+        public void Load_DbDoesNotContainsNode_ReturnsNull()
+        {
+            // Arrange
+            var treeContext = new CachedTreeContext();
+            var dbTreeRepository = Substitute.For<IDbTreeRepository>();
+            var cachedTreeRepository = new CachedTreeRepository(treeContext, dbTreeRepository);
+
+            // Act
+            TreeNode treeNode = cachedTreeRepository.Load(Guid.NewGuid());
+
+            // Assert
+            Assert.That(treeNode, Is.Null);
+        }
+
+        [Test]
+        public void Load_DeletedNode_ReturnsNull()
+        {
+            // Arrange
+            var expectedNode = new TreeNode
+            {
+                Id = Guid.NewGuid(),
+                IsDeleted = true
+            };
+            var treeContext = new CachedTreeContext();
+            var dbTreeRepository = Substitute.For<IDbTreeRepository>();
+            dbTreeRepository.GetById(expectedNode.Id).Returns(expectedNode);
+            var cachedTreeRepository = new CachedTreeRepository(treeContext, dbTreeRepository);
+
+            // Act
+            TreeNode treeNode = cachedTreeRepository.Load(expectedNode.Id);
+
+            // Assert
+            Assert.That(treeNode, Is.Null);
         }
 
         [Test]

@@ -97,7 +97,7 @@
             $('#dbTree').on(
                 "changed.jstree",
                 function (evt, data) {
-                    var disabled = !data.selected.length;
+                    var disabled = !(data.selected.length && canExecuteAction($('#dbTree'), data.node));
                     $('#btn_load').prop('disabled', disabled);
                 });
 

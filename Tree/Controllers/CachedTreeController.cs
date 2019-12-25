@@ -40,7 +40,7 @@
         [HttpGet("{id}")]
         public ActionResult<TreeNode> GetNode(Guid id)
         {
-            TreeNode treeNode = _treeRepository.GetById(id);
+            TreeNode treeNode = _treeRepository.Load(id);
 
             if (treeNode == null)
             {

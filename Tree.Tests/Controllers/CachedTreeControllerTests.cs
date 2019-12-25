@@ -96,7 +96,7 @@ namespace Tree.Tests.Controllers
                 Value = "text"
             };
 
-            treeRepository.GetById(expectedNode.Id).Returns(expectedNode);
+            treeRepository.Load(expectedNode.Id).Returns(expectedNode);
             var cachedTreeController = new CachedTreeController(treeRepository);
 
             // Act
@@ -111,7 +111,7 @@ namespace Tree.Tests.Controllers
         {
             // Arrange
             var treeRepository = Substitute.For<ICachedTreeRepository>();
-            treeRepository.GetById(Arg.Any<Guid>()).Returns((TreeNode)null);
+            treeRepository.Load(Arg.Any<Guid>()).Returns((TreeNode)null);
             var cachedTreeController = new CachedTreeController(treeRepository);
 
             // Act
@@ -197,7 +197,7 @@ namespace Tree.Tests.Controllers
         }
 
         [Test]
-        public void DeleteNode_NodeIdNotValid_CallsRepositoryDelete()
+        public void DeleteNode_NodeIdNotValid_DoesNotCallRepositoryDelete()
         {
             // Arrange
             Guid id = Guid.NewGuid();

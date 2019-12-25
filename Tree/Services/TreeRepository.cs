@@ -30,7 +30,7 @@
 
         public virtual T GetById(Guid id)
         {
-            return _treeContext.Tree[id];
+            return _treeContext.Tree.TryGetValue(id, out T node) ? node : null;
         }
 
         public IEnumerable<T> GetAll()
@@ -55,25 +55,24 @@
                 throw new ArgumentException("Can't add one more root");
             }
 
-            try
-            {
-                if (node.ParentId.HasValue)
-                {
-                    T parent = GetById(node.ParentId.Value);
-                    if (parent.IsDeleted)
-                    {
-                        if (parent.State == NodeState.Unchanged)
-                        {
-                            throw new InvalidOperationException("Can't add node to deleted parent");
-                        }
 
-                        node.IsDeleted = true;
-                    }
-                }
-            }
-            catch (KeyNotFoundException e)
+            if (node.ParentId.HasValue)
             {
-                throw new ArgumentException("Can't add node without parent", e);
+                T parent = GetById(node.ParentId.Value);
+                if (parent == null)
+                {
+                    throw new ArgumentException("Can't add node without parent");
+                }
+
+                if (parent.IsDeleted)
+                {
+                    if (parent.State == NodeState.Unchanged)
+                    {
+                        throw new InvalidOperationException("Can't add node to deleted parent");
+                    }
+
+                    node.IsDeleted = true;
+                }
             }
 
             if (node.Id == Guid.Empty)
