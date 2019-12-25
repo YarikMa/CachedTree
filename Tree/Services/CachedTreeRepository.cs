@@ -60,6 +60,7 @@
             ApplyChanges(FindChildren(null));
             base.Apply();
             _treeRepository.Apply();
+            RetrieveChanges();
         }
 
         public override void Reset()
@@ -119,8 +120,14 @@
                 }
 
                 ApplyChanges(_treeContext.Tree.Values.Where(n => n.ParentId == child.Id));
-                // case when grand-parent is deleted without loading parent node to cache
-                child.IsDeleted = _treeRepository.GetById(child.Id).IsDeleted;
+            }
+        }
+
+        private void RetrieveChanges()
+        {
+            foreach (TreeNode treeNode in GetAll())
+            {
+                treeNode.IsDeleted = _treeRepository.GetById(treeNode.Id).IsDeleted;
             }
         }
 

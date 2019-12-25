@@ -334,6 +334,28 @@
         }
 
         [Test]
+        public void Apply_InAnyCase_RetrievesChangesOfNodesFromDb()
+        {
+            // Arrange
+            var id1 = Guid.NewGuid();
+            var id2 = Guid.NewGuid();
+
+            var treeContext = new CachedTreeContext();
+            treeContext.Tree.Add(id1, new TreeNode { Id = id1 });
+            treeContext.Tree.Add(id2, new TreeNode { Id = id2 });
+            var dbTreeRepository = Substitute.For<IDbTreeRepository>();
+            dbTreeRepository.GetById(Arg.Any<Guid>()).Returns(new TreeNode { Id = id1 }, new TreeNode { Id = id2 });
+            var cachedTreeRepository = new CachedTreeRepository(treeContext, dbTreeRepository);
+
+            // Act
+            cachedTreeRepository.Apply();
+
+            // Assert
+            dbTreeRepository.Received().GetById(id1);
+            dbTreeRepository.Received().GetById(id2);
+        }
+
+        [Test]
         public void Reset_InAnyCase_ResetsDbTreeRepository()
         {
             // Arrange
