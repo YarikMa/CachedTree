@@ -101,7 +101,7 @@
         public void Delete(T node)
         {
             T oldNode = _treeContext.Tree[node.Id];
-            oldNode.Value = oldNode.Value;
+            oldNode.Value = node.Value;
             oldNode.IsDeleted = true;
             oldNode.State = oldNode.State == NodeState.Added ? NodeState.Added : NodeState.Deleted;
 

@@ -511,6 +511,28 @@
             Assert.That(treeContext.Tree[root.Id].IsDeleted, Is.True);
         }
 
+        [Test]
+        public void Delete_NodeHasAnotherValue_ValueChanges()
+        {
+            // Arrange
+            const string CHANGED_VALUE = "changed";
+            var treeContext = new DbTreeContext();
+            var root = new TreeNode
+            {
+                Id = Guid.NewGuid(),
+                State = NodeState.Unchanged,
+                Value = "unchanged"
+            };
+            treeContext.Tree.Add(root.Id, root);
+            var dbTreeRepository = new DbTreeRepository(treeContext);
+
+            // Act
+            dbTreeRepository.Delete(new TreeNode {Id = root.Id, IsDeleted = true, Value = CHANGED_VALUE});
+
+            // Assert
+            Assert.That(root.Value, Is.EqualTo(CHANGED_VALUE));
+        }
+
         [TestCase(NodeState.Added)]
         [TestCase(NodeState.Modified)]
         [TestCase(NodeState.Deleted)]
